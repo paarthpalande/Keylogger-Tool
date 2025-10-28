@@ -1,2 +1,22 @@
-# Keylogger-Tool
-A Python-based keystroke logging tool for monitoring and analysis purposes. – Captures and records all keystrokes pressed by the user in real-time. – Stores the recorded data securely in a local file for further analysis. – Technology Used: Python, Pynput Library, File Handling. 
+# Keylogger (Educational Project)
+
+⚠️ **Disclaimer:**  
+This project is created **strictly for educational purposes** to understand how keylogging works in cybersecurity and how such threats can be detected and prevented.  
+**Do not use this tool on anyone’s system without explicit consent.**  
+Unauthorized usage is illegal and unethical.
+
+## Purpose
+To demonstrate the working of a keylogging mechanism for learning cybersecurity concepts such as:
+- Threat analysis
+- Malware detection
+- Incident response
+
+## Features
+- Captures keyboard input (for demo/testing)
+- Saves keystrokes locally (test mode only)
+- Demonstrates detection & mitigation
+
+## Technologies Used
+- Python
+- Pynput library
+
